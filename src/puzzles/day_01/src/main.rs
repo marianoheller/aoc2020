@@ -40,7 +40,7 @@ fn read_ints(path: &str) -> Vec<i32> {
 }
 
 fn main() {
-    let nums = read_ints("src/inputs/p01.txt");
+    let nums = read_ints("src/inputs/day_01.txt");
     println!("Read {} nums", nums.len());
 
     let p1 = solve_p1(nums.clone());
