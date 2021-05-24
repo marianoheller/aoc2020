@@ -9,10 +9,10 @@ pub struct Rule {
 }
 
 impl Rule {
-    pub fn new(s: String) -> Self {
+    pub fn new<S: AsRef<str>>(s: S) -> Self {
         let re = Regex::new(r#"^([0-9]+)-([0-9]+) (.*)$"#).unwrap();
 
-        let captures = re.captures_iter(&s[..]).collect::<Vec<_>>();
+        let captures = re.captures_iter(s.as_ref()).collect::<Vec<_>>();
         let lower: i32 = captures[0].get(1).unwrap().as_str().parse().unwrap();
         let upper: i32 = captures[0].get(2).unwrap().as_str().parse().unwrap();
         let target = captures[0].get(3).unwrap().as_str().chars().next().unwrap();
@@ -47,11 +47,11 @@ impl Rule {
     }
 }
 
-pub fn parse_lines(lines: Vec<String>) -> Vec<(String, String)> {
+pub fn parse_lines<S: AsRef<str>>(lines: &Vec<S>) -> Vec<(String, String)> {
     lines
         .into_iter()
         .map(|line| {
-            let mut split = line.split(": ");
+            let mut split = line.as_ref().split(": ");
             let rule = split.nth(0).unwrap();
             let password = split.nth(0).unwrap();
             (rule.to_owned(), password.to_owned())
@@ -59,7 +59,7 @@ pub fn parse_lines(lines: Vec<String>) -> Vec<(String, String)> {
         .collect()
 }
 
-pub fn count_valid_p1(lines: Vec<String>) -> i32 {
+pub fn count_valid_p1<S: AsRef<str>>(lines: &Vec<S>) -> i32 {
     parse_lines(lines)
         .into_iter()
         .fold(0, |acc, (rule, password)| {
@@ -71,7 +71,7 @@ pub fn count_valid_p1(lines: Vec<String>) -> i32 {
         })
 }
 
-pub fn count_valid_p2(lines: Vec<String>) -> i32 {
+pub fn count_valid_p2<S: AsRef<str>>(lines: &Vec<S>) -> i32 {
     parse_lines(lines)
         .into_iter()
         .fold(0, |acc, (rule, password)| {
@@ -89,11 +89,11 @@ fn main() {
         .flatten()
         .collect::<Vec<_>>();
 
-    let p1 = count_valid_p1(lines.clone());
+    let p1 = count_valid_p1(&lines);
     println!("Part 1: {:?}", p1);
 
-    let p2 = count_valid_p2(lines.clone());
-    println!("Part 1: {:?}", p2);
+    let p2 = count_valid_p2(&lines);
+    println!("Part 2: {:?}", p2);
 }
 
 #[cfg(test)]
@@ -102,7 +102,7 @@ mod tests {
 
     #[test]
     fn valid_rule() {
-        let proto_rule = "1-3 a".to_owned();
+        let proto_rule = "1-3 a";
         assert_eq!(
             Rule::new(proto_rule),
             Rule {
@@ -115,21 +115,13 @@ mod tests {
 
     #[test]
     fn example_p1() {
-        let input = vec![
-            "1-3 a: abcde".to_owned(),
-            "1-3 b: cdef".to_owned(),
-            "2-9 c: ccccccccc".to_owned(),
-        ];
-        assert_eq!(count_valid_p1(input), 2);
+        let input = vec!["1-3 a: abcde", "1-3 b: cdef", "2-9 c: ccccccccc"];
+        assert_eq!(count_valid_p1(&input), 2);
     }
 
     #[test]
     fn example_p2() {
-        let input = vec![
-            "1-3 a: abcde".to_owned(),
-            "1-3 b: cdef".to_owned(),
-            "2-9 c: ccccccccc".to_owned(),
-        ];
-        assert_eq!(count_valid_p2(input), 1);
+        let input = vec!["1-3 a: abcde", "1-3 b: cdef", "2-9 c: ccccccccc"];
+        assert_eq!(count_valid_p2(&input), 1);
     }
 }
