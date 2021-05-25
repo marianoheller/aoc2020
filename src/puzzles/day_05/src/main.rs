@@ -7,37 +7,40 @@ fn main() {
         .flatten()
         .collect::<Vec<_>>();
 
-    let max_id = lines
-        .into_iter()
-        .map(|line| {
-            let Seat { col, row } = Seat::from_str(line);
-            row * 8 + col
-        })
-        .max()
-        .unwrap();
+    let ids = lines.into_iter().map(|line| {
+        let BoardingPass { col, row } = BoardingPass::from_str(line);
+        row * 8 + col
+    });
 
+    let max_id = ids.clone().max().unwrap();
     println!("Part 1: {:?}", max_id);
+
+    let min_id = ids.clone().min().unwrap();
+    let ids = ids.collect::<Vec<_>>();
+    let maybe_found = (min_id..=max_id)
+        .find(|id| !ids.contains(id) && ids.contains(&(*id + 1)) && ids.contains(&(*id - 1)));
+    println!("Part 2: {:?}", maybe_found);
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct Seat {
+pub struct BoardingPass {
     col: isize,
     row: isize,
 }
 
-impl Seat {
-    pub fn from_str<T: AsRef<str>>(s: T) -> Seat {
+impl BoardingPass {
+    pub fn from_str<T: AsRef<str>>(s: T) -> BoardingPass {
         let (row, col) = s.as_ref().split_at(7);
-        let row = row
-            .chars()
-            .map(|c| if c == 'B' { '1' } else { '0' })
-            .collect::<String>();
-        let col = col
-            .chars()
-            .map(|c| if c == 'R' { '1' } else { '0' })
-            .collect::<String>();
+        let transform = |str: &str, one: char| -> String {
+            str.chars()
+                .map(|c| if c == one { '1' } else { '0' })
+                .collect::<String>()
+        };
 
-        Seat {
+        let row = transform(row, 'B');
+        let col = transform(col, 'R');
+
+        BoardingPass {
             col: isize::from_str_radix(&col[..], 2).unwrap(),
             row: isize::from_str_radix(&row[..], 2).unwrap(),
         }
@@ -50,8 +53,8 @@ mod test {
 
     #[test]
     fn examples_p1() {
-        assert_eq!(Seat::from_str("BFFFBBFRRR"), Seat { row: 70, col: 7 });
-        assert_eq!(Seat::from_str("FFFBBBFRRR"), Seat { row: 14, col: 7 });
-        assert_eq!(Seat::from_str("BBFFBBFRLL"), Seat { row: 102, col: 4 });
+        assert_eq!(BoardingPass::from_str("BFFFBBFRRR"), BoardingPass { row: 70, col: 7 });
+        assert_eq!(BoardingPass::from_str("FFFBBBFRRR"), BoardingPass { row: 14, col: 7 });
+        assert_eq!(BoardingPass::from_str("BBFFBBFRLL"), BoardingPass { row: 102, col: 4 });
     }
 }
