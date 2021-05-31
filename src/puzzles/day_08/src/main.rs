@@ -11,7 +11,7 @@ enum Instruction {
 enum FinishCondition {
     Correctly,
     InfiniteLoop,
-    Overflow
+    Overflow,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -26,7 +26,7 @@ impl Program {
     pub fn run_safe(&mut self) -> (i32, FinishCondition) {
         if self.lines_executed.contains(&self.ip) {
             (self.acc, FinishCondition::InfiniteLoop)
-        } else if self.lines_executed.len() == self.instructions.len() {
+        } else if self.ip == self.instructions.len() - 1 {
             (self.acc, FinishCondition::Correctly)
         } else if self.ip >= self.instructions.len() {
             (self.acc, FinishCondition::Overflow)
