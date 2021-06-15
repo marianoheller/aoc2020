@@ -79,6 +79,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     pub fn examples_p2() {
         let vals: Vec<Option<usize>> = vec![Some(17), None, Some(13), Some(19)];
         assert_eq!(solve_p2(&vals), 3417);
