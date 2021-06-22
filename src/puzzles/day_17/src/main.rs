@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
 use utils::read_lines;
 
@@ -8,22 +8,108 @@ pub enum CubeState {
     Inactive,
 }
 
+pub trait SpaceCoords {
+    fn for_each_neighbor<F>(&self, f: F)
+    where
+        F: FnMut(&Self);
+}
+
+// ========================================================================
+// 3D
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct Coords {
+pub struct Coords3D {
     x: isize,
     y: isize,
     z: isize,
 }
 
-impl Into<Coords> for (isize, isize, isize) {
-    fn into(self) -> Coords {
-        Coords {
-            x: self.0,
-            y: self.1,
-            z: self.2,
+impl From<(isize, isize)> for Coords3D {
+    fn from(tuple: (isize, isize)) -> Self {
+        Coords3D {
+            x: tuple.0,
+            y: tuple.1,
+            z: 0,
         }
     }
 }
+
+impl From<(isize, isize, isize)> for Coords3D {
+    fn from(tuple: (isize, isize, isize)) -> Self {
+        Coords3D {
+            x: tuple.0,
+            y: tuple.1,
+            z: tuple.2,
+        }
+    }
+}
+
+impl SpaceCoords for Coords3D {
+    fn for_each_neighbor<F>(&self, mut f: F)
+    where
+        F: FnMut(&Coords3D),
+    {
+        for x in (self.x - 1)..=(self.x + 1) {
+            for y in (self.y - 1)..=(self.y + 1) {
+                for z in (self.z - 1)..=(self.z + 1) {
+                    let coords: Coords3D = Coords3D::from((x, y, z));
+                    f(&coords);
+                }
+            }
+        }
+    }
+}
+
+// ========================================================================
+// 4D
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub struct Coords4D {
+    x: isize,
+    y: isize,
+    z: isize,
+    w: isize,
+}
+
+impl From<(isize, isize)> for Coords4D {
+    fn from(tuple: (isize, isize)) -> Self {
+        Coords4D {
+            x: tuple.0,
+            y: tuple.1,
+            z: 0,
+            w: 0,
+        }
+    }
+}
+
+impl From<(isize, isize, isize, isize)> for Coords4D {
+    fn from(tuple: (isize, isize, isize, isize)) -> Self {
+        Coords4D {
+            x: tuple.0,
+            y: tuple.1,
+            z: tuple.2,
+            w: tuple.3,
+        }
+    }
+}
+
+impl SpaceCoords for Coords4D {
+    fn for_each_neighbor<F>(&self, mut f: F)
+    where
+        F: FnMut(&Coords4D),
+    {
+        for x in (self.x - 1)..=(self.x + 1) {
+            for y in (self.y - 1)..=(self.y + 1) {
+                for z in (self.z - 1)..=(self.z + 1) {
+                    for w in (self.w - 1)..=(self.w + 1) {
+                        let coords: Coords4D = Coords4D::from((x, y, z, w));
+                        f(&coords);
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ========================================================================
 
 #[derive(Debug)]
 pub struct NeighborsCount {
@@ -41,19 +127,23 @@ impl NeighborsCount {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct World {
-    data: HashMap<Coords, CubeState>,
+pub struct World<T>
+where
+    T: Clone + Hash + Eq + From<(isize, isize)> + SpaceCoords,
+{
+    data: HashMap<T, CubeState>,
 }
 
-impl World {
+impl<T> World<T>
+where
+    T: Clone + Hash + Eq + From<(isize, isize)> + SpaceCoords,
+{
     pub fn tick(&mut self) {
         self.pad();
-        let og_world: World = self.clone();
+        let og_world = self.clone();
         for coords in og_world.data.keys() {
-            let count = World::count_neighbours(coords, &og_world);
+            let count = World::count_neighbors(coords, &og_world);
             let cube = self.data.get_mut(coords).unwrap();
-
-            // println!("count {:?} for {:?}", count, coords);
 
             match cube {
                 CubeState::Active if count.active == 2 || count.active == 3 => {
@@ -72,21 +162,15 @@ impl World {
 
     fn pad(&mut self) {
         for c in self.data.clone().keys() {
-            for x in (c.x - 1)..=(c.x + 1) {
-                for y in (c.y - 1)..=(c.y + 1) {
-                    for z in (c.z - 1)..=(c.z + 1) {
-                        let coords: Coords = (x, y, z).into();
-                        let neighbor = self.data.get(&coords);
-
-                        match neighbor {
-                            None => {
-                                self.data.insert(coords, CubeState::Inactive);
-                            }
-                            _ => {}
-                        };
+            c.for_each_neighbor(|cn| {
+                let neighbor = self.data.get(&cn);
+                match neighbor {
+                    None => {
+                        self.data.insert(cn.clone(), CubeState::Inactive);
                     }
-                }
-            }
+                    _ => {}
+                };
+            });
         }
     }
 
@@ -99,32 +183,27 @@ impl World {
         })
     }
 
-    fn count_neighbours(c: &Coords, world: &World) -> NeighborsCount {
+    fn count_neighbors(c: &T, world: &World<T>) -> NeighborsCount {
         let mut neighbors_count = NeighborsCount::new();
 
-        for x in (c.x - 1)..=(c.x + 1) {
-            for y in (c.y - 1)..=(c.y + 1) {
-                for z in (c.z - 1)..=(c.z + 1) {
-                    if (x, y, z) != (c.x, c.y, c.z) {
-                        let coords: Coords = (x, y, z).into();
-                        let neighbor = world.data.get(&coords);
-                        match neighbor {
-                            Some(CubeState::Active) => {
-                                neighbors_count.active += 1;
-                            }
-                            _ => {
-                                neighbors_count.inactive += 1;
-                            }
-                        }
+        c.for_each_neighbor(|cn| {
+            if cn != c {
+                let neighbor = world.data.get(&cn);
+                match neighbor {
+                    Some(CubeState::Active) => {
+                        neighbors_count.active += 1;
+                    }
+                    _ => {
+                        neighbors_count.inactive += 1;
                     }
                 }
             }
-        }
+        });
 
         neighbors_count
     }
 
-    pub fn from_lines<T: AsRef<str>>(lines: &Vec<T>) -> World {
+    pub fn from_lines<S: AsRef<str>>(lines: &Vec<S>) -> World<T> {
         let data = lines
             .iter()
             .enumerate()
@@ -139,9 +218,9 @@ impl World {
                                 panic!("Invalid character")
                             }
                         };
-                        ((x as isize, y as isize, 0 as isize).into(), state)
+                        ((x as isize, y as isize).into(), state)
                     })
-                    .collect::<Vec<(Coords, CubeState)>>()
+                    .collect::<Vec<(_, CubeState)>>()
             })
             .collect();
 
@@ -155,13 +234,18 @@ fn main() {
         .flatten()
         .collect::<Vec<_>>();
 
-    let mut world: World = World::from_lines(&lines);
-
+    let mut world = World::<Coords3D>::from_lines(&lines);
     for _i in 0..6 {
         world.tick();
     }
-
     println!("Part 1: {:?}", world.count_active());
+    
+    
+    let mut world = World::<Coords4D>::from_lines(&lines);
+    for _i in 0..6 {
+        world.tick();
+    }
+    println!("Part 2: {:?}", world.count_active());
 }
 
 #[cfg(test)]
@@ -170,7 +254,7 @@ mod test {
 
     #[test]
     fn example_p1() {
-        let mut world = World {
+        let mut world = World::<Coords3D> {
             data: vec![
                 ((0, 0, 0).into(), CubeState::Inactive),
                 ((1, 0, 0).into(), CubeState::Active),
